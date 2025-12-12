@@ -197,20 +197,20 @@ Ensure you have the following installed locally:
 
 ## How to Use
 
-### It consists of two parts:
+### It consists of 3 parts:
 * **CDC & Transactions Predictor**
 * **Grafana Visualize & InfluxDB Time Series Store**
 * **Run Synthetic Transactions on Web & Server**
 
 #### 🖥️ CDC & Transactions Predictor
 
-1.  **Clone the repository:**
+1. **Clone the repository:**
     ```bash
     git clone [https://github.com/wachawich/Real-Time-Online-Payment-Fraud-Detection-Monitoring.git](https://github.com/wachawich/Real-Time-Online-Payment-Fraud-Detection-Monitoring.git)
     cd Real-Time-Online-Payment-Fraud-Detection-Monitoring
     ```
 
-2.  **Start the services:**
+2. **Start the services:**
     This command will spin up all containers (Postgres, Kafka, Flink, ML Model, Grafana, etc.).
     ```bash
     docker-compose up -d --build --scale app=3 # app is a count of load balance service
