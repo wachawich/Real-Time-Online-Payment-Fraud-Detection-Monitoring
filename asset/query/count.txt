@@ -1,0 +1,18 @@
+from(bucket: "fraud_monitoring")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r["_measurement"] == "fraud_transaction")
+  |> filter(fn: (r) => r["_field"] == "is_fraud")
+  |> filter(fn: (r) => r["_value"] == 0) // กรองเอาเฉพาะ Normal
+  |> group() // รวมทุก Tag เข้าด้วยกัน
+  |> count() // นับจำนวนแถวทั้งหมดที่เหลืออยู่ (จะได้ตัวเลขยอดรวม)
+  |> yield(name: "Normal Transactions Count")
+
+
+from(bucket: "fraud_monitoring")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r["_measurement"] == "fraud_transaction")
+  |> filter(fn: (r) => r["_field"] == "is_fraud")
+  |> filter(fn: (r) => r["_value"] == 1)
+  |> group() // รวมทุก Tag เข้าด้วยกัน
+  |> count() // นับจำนวนแถวทั้งหมดที่เหลืออยู่ (จะได้ตัวเลขยอดรวม)
+  |> yield(name: "Fraud Transactions Count")

@@ -1,0 +1,19 @@
+from(bucket: "fraud_monitoring")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r["_measurement"] == "fraud_transaction")
+  |> filter(fn: (r) => r["_field"] == "is_fraud")
+  |> filter(fn: (r) => r["_value"] == 0)
+  |> aggregateWindow(every: 5s, fn: count)
+  |> sort(columns: ["_time"], desc: true)
+  |> yield(name: "Normal")
+
+
+
+from(bucket: "fraud_monitoring")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r["_measurement"] == "fraud_transaction")
+  |> filter(fn: (r) => r["_field"] == "is_fraud")
+  |> filter(fn: (r) => r["_value"] == 1)
+  |> aggregateWindow(every: 5s, fn: count)
+  |> sort(columns: ["_time"], desc: true)
+  |> yield(name: "Fraud")
