@@ -164,6 +164,80 @@ This dataset enables the system to learn patterns and characteristics of fraudul
 
 ---
 
+## 🤖 Machine Learning Model Development
+
+### XGBoost Model Training
+
+The fraud detection system uses **XGBoost (Extreme Gradient Boosting)** as the core machine learning algorithm. The complete model development process is documented in the Jupyter notebook: [`fraud_detection_with_xgboost.ipynb`](jupyter/fraud_detection_with_xgboost.ipynb).
+
+#### 📊 Feature Engineering
+
+The model incorporates several engineered features to improve fraud detection accuracy:
+
+| Feature | Description | Formula |
+|---------|-------------|---------|
+| `diffOrig` | Origin account balance discrepancy | `oldbalanceOrg - newbalanceOrig - amount` |
+| `diffDest` | Destination account balance discrepancy | `newbalanceDest - oldbalanceDest - amount` |
+| `hour` | Transaction hour (0-23) | `step % 24` |
+| `relativeAmount` | Amount relative to origin balance | `amount / (oldbalanceOrg + 1)` |
+
+#### 🎯 Model Configuration
+
+```python
+xgb_model = XGBClassifier(
+    n_estimators=500,
+    learning_rate=0.1,
+    max_depth=6,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    scale_pos_weight=773.75,  # Handle class imbalance
+    random_state=42,
+    n_jobs=-1
+)
+```
+
+#### 🔧 Data Preprocessing Pipeline
+
+1. **Data Cleaning**: Remove irrelevant columns (`nameOrig`, `nameDest`, `isFlaggedFraud`)
+2. **Feature Engineering**: Create derived features for better fraud pattern detection
+3. **Encoding**: One-hot encoding for categorical variables
+4. **Scaling**: StandardScaler for numerical features
+5. **Class Balancing**: Use `scale_pos_weight` to handle imbalanced dataset
+
+#### 📈 Model Performance
+
+The XGBoost model achieves high performance in fraud detection:
+- **ROC-AUC Score**: > 0.95
+- **Precision**: High precision to minimize false positives
+- **Recall**: Optimized to catch most fraudulent transactions
+- **Feature Importance**: `diffOrig` and `diffDest` are top indicators of fraud
+
+#### 💾 Model Export & Deployment
+
+The trained model and preprocessing pipeline are exported as pickle files:
+```python
+# Export trained model
+with open("xgb_model.pkl", "wb") as f:
+    pickle.dump(xgb_model, f)
+
+# Export preprocessing pipeline
+with open("preprocessing_pipeline.pkl", "wb") as f:
+    pickle.dump(pipeline, f)
+```
+
+These serialized models are then integrated into the [`fraud_predictor.py`](fraud_predictor/fraud_predictor.py) service for real-time inference.
+
+#### 🚀 Integration with Stream Processing
+
+The ML model works in conjunction with Apache Flink:
+1. **Flink** filters transactions using business rules
+2. **XGBoost** performs deep learning inference on suspicious transactions only
+3. **Results** are streamed to Kafka topic `fraud.predictions`
+
+This hybrid approach ensures **low latency** and **high accuracy** while optimizing computational resources.
+
+---
+
 ## 📦 Prerequisites
 Ensure you have the following installed locally:
 * [Docker](https://www.docker.com/)
