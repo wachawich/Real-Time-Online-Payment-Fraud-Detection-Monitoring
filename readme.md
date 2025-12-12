@@ -13,8 +13,8 @@ This project demonstrates a scalable, end-to-end Data Engineering and Machine Le
 
 Instead of relying on static datasets, this system initiates by generating Synthetic Online Payment Transactions to simulate a live production environment. The core architectural decision involves a Hybrid Detection Strategy:
 
-    1. Rule-Based Filtering (Flink): Acts as the first line of defense to filter high-volume streams using predefined business rules.
-    2. ML Inference (XGBoost): Only "suspicious" transactions identified by Flink are forwarded to the Machine Learning model.
+  1. Rule-Based Filtering (Flink): Acts as the first line of defense to filter high-volume streams using predefined business rules.
+  2. ML Inference (XGBoost): Only "suspicious" transactions identified by Flink are forwarded to the Machine Learning model.
 
 Why this approach? By using Apache Flink to pre-process and filter data, we significantly reduce the computational load and latency on the XGBoost predictor, ensuring the ML model only spends resources analyzing high-probability fraud candidates rather than every single transaction.
 
@@ -202,7 +202,7 @@ Ensure you have the following installed locally:
 * **Grafana Visualize & InfluxDB Time Series Store**
 * **Run Synthetic Transactions on Web & Server**
 
-#### CDC & Transactions Predictor
+#### 🖥️ CDC & Transactions Predictor
 
 1.  **Clone the repository:**
     ```bash
@@ -271,7 +271,7 @@ Host : http://localhost:8083/connectors/postgres-connector/config
     "value.converter.schemas.enable": "false"
 }
 ```
-5.3 Test Insert Transactions
+* 5.3 Test Insert Transactions
 ```sql
 INSERT INTO transactions (
     step, type, amount, nameOrig, oldbalanceOrg, newbalanceOrig, 
@@ -290,8 +290,9 @@ INSERT INTO transactions (
 );
 ```
 
-5.4 Wait a minute and go to `http://localhost:8080/`
-5.5 You will find topic `pg.public.transactions`, `fraud.features.ml`, `fraud.predictions` it is done!
+* 5.4 Wait a minute and go to `http://localhost:8080/`
+
+* 5.5 You will find topic `pg.public.transactions`, `fraud.features.ml`, `fraud.predictions` it is done!
 
 
 6. If you want to test insert some transactions to DB
@@ -307,6 +308,7 @@ INSERT INTO transactions (
 
 7. Look at the topic `fraud.predictions`, you will see the transactions that have been predicted.
 
+---
 
 #### 📊 Grafana Visualize & InfluxDB Time Series Store
 
@@ -372,6 +374,7 @@ INSERT INTO transactions (
 
 You can now configure the panel settings (Title, Color, Legend) on the right sidebar. Feel free to add more panels or change visualization types (e.g., Stat, Gauge, Bar Chart) to suit your monitoring needs!
 
+---
 
 #### Run Synthetic Transactions on Web & Server
 1. **Monitor Real-Time Logs:**
