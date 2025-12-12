@@ -1,0 +1,170 @@
+version: '3'
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=maindb
+    command: ["postgres", "-c", "wal_level=logical"]
+
+  connect:
+    image: debezium/connect:2.3
+    ports:
+      - "8083:8083"
+    depends_on:
+      - kafka
+      - postgres
+    environment:
+      - BOOTSTRAP_SERVERS=kafka:29092
+      - GROUP_ID=1
+      - CONFIG_STORAGE_TOPIC=my_connect_configs
+      - OFFSET_STORAGE_TOPIC=my_connect_offsets
+      - STATUS_STORAGE_TOPIC=my_connect_statuses
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    depends_on:
+      - kafka
+
+  fraud-detector:
+    build: ./flink_app 
+    depends_on:
+      - kafka
+    environment:
+      - PYTHONUNBUFFERED=1 
+    volumes:
+      - ./flink_app:/app
+
+  fraud-predictor:
+    build: ./fraud_predictor
+    container_name: fraud-predictor
+    depends_on:
+      - kafka
+      - fraud-detector
+    restart: always  
+    environment:
+      - PYTHONUNBUFFERED=1      
+    # networks:
+    #   - my-network
+
+  # Section 4: Monitoring (InfluxDB + Consumer) --> เพิ่มส่วนนี้เข้ามา
+  influxdb:
+    image: influxdb:2.7
+    ports:
+      - "8086:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=password12345
+      - DOCKER_INFLUXDB_INIT_ORG=qOn
+      - DOCKER_INFLUXDB_INIT_BUCKET=fraud_monitoring
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-super-secret-auth-token
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+
+  influx-consumer:
+    build: ./influx_consumer  # โฟลเดอร์ที่มีไฟล์ python สำหรับเขียนลง Influx
+    depends_on:
+      - kafka
+      - influxdb
+    restart: always
+    environment:
+      - KAFKA_BROKER=kafka:29092
+      - KAFKA_TOPIC=fraud.predictions  # ชื่อ Topic ที่ fraud-predictor ส่งออกมา
+      - INFLUX_URL=http://influxdb:8086
+      - INFLUX_TOKEN=my-super-secret-auth-token
+      - INFLUX_ORG=qOn
+      - INFLUX_BUCKET=fraud_monitoring
+  
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - influxdb
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:  # <--- เพิ่มตรงนี้
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=password12345
+
+
+  # ---------------------------------------------------
+  # ส่วน Web Client (Next.js)
+  # ---------------------------------------------------
+  frontend:
+    build:
+      context: ./clients
+      dockerfile: Dockerfile
+    container_name: nextjs_frontend
+    ports:
+      - "3001:3001" # Map Host 3001 -> Container 3001 เพื่อเลี่ยงชน Grafana
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    depends_on:
+      - app
+
+
+  # ---------------------------------------------------
+  # ส่วน Server / Web App (เพิ่มเข้ามาใหม่)
+  # ---------------------------------------------------
+  app:
+    build:
+      context: ./server
+    # container_name: go_server
+    environment:
+      - PORT=5000
+      - DB_NAME=maindb
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+    depends_on:
+      - postgres
+    networks:
+      - default
+
+  nginx:
+    image: nginx:stable-alpine
+    depends_on:
+      - app
+    ports:
+      - "80:80" 
+    volumes:
+      - ./server/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - default
+
+volumes:
+    influxdb_data:
+    grafana_data:
